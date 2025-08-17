@@ -549,6 +549,17 @@ function showSyncStatus() {
     showNotification(`${onlineStatus} | ${status}`, 'info', 5000);
 }
 
+// Sync quotes function - main synchronization entry point
+function syncQuotes() {
+    if (!isOnline) {
+        showNotification('Cannot sync - currently offline', 'warning');
+        return;
+    }
+    
+    showNotification('Starting quote synchronization...', 'info');
+    syncWithServer();
+}
+
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Load quotes from localStorage first
