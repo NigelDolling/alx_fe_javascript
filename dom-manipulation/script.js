@@ -312,7 +312,7 @@ async function postQuoteToServer(quote) {
         }
         
         const result = await response.json();
-        showNotification('Quote synced to server successfully', 'success');
+        showNotification('Quotes synced with server!', 'success');
         return result;
     } catch (error) {
         console.error('Failed to post quote to server:', error);
