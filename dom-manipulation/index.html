@@ -9,6 +9,11 @@
 <body>
     <h1>Dynamic Quote Generator</h1>
     
+    <div id="syncStatus">
+        <button onclick="showSyncStatus()">Sync Status</button>
+        <button onclick="manualSync()">Manual Sync</button>
+    </div>
+    
     <div id="categoryFilter">
         <label for="categorySelect">Filter by Category:</label>
         <select id="categorySelect" onchange="filterQuotesByCategory()">

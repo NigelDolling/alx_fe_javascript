@@ -239,6 +239,277 @@ function importQuotes(event) {
     reader.readAsText(file);
 }
 
+// Server Simulation and Data Syncing Functions
+const SERVER_CONFIG = {
+    baseUrl: 'https://jsonplaceholder.typicode.com/posts',
+    syncInterval: 30000, // 30 seconds
+    lastSyncKey: 'lastSyncTimestamp'
+};
+
+let syncInterval;
+let isOnline = navigator.onLine;
+
+// Simulate server quotes by transforming JSONPlaceholder posts
+function transformPostToQuote(post) {
+    const categories = ['motivation', 'life', 'inspiration', 'success', 'wisdom', 'happiness', 'growth'];
+    return {
+        id: post.id,
+        text: post.title.charAt(0).toUpperCase() + post.title.slice(1) + '.',
+        category: categories[post.id % categories.length],
+        source: 'server',
+        timestamp: Date.now()
+    };
+}
+
+// Fetch quotes from server (simulated)
+async function fetchServerQuotes() {
+    try {
+        showNotification('Syncing with server...', 'info');
+        const response = await fetch(`${SERVER_CONFIG.baseUrl}?_limit=10`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const posts = await response.json();
+        const serverQuotes = posts.map(transformPostToQuote);
+        
+        return serverQuotes;
+    } catch (error) {
+        console.error('Failed to fetch server quotes:', error);
+        showNotification('Failed to sync with server. Working offline.', 'error');
+        return [];
+    }
+}
+
+// Sync local data with server
+async function syncWithServer() {
+    if (!isOnline) {
+        showNotification('Offline mode - sync will resume when online', 'warning');
+        return;
+    }
+
+    try {
+        const serverQuotes = await fetchServerQuotes();
+        
+        if (serverQuotes.length === 0) {
+            return;
+        }
+
+        const localQuotes = [...quotes];
+        const conflicts = [];
+        let newQuotesAdded = 0;
+        let quotesUpdated = 0;
+
+        // Check for conflicts and new quotes
+        serverQuotes.forEach(serverQuote => {
+            const existingQuote = localQuotes.find(q => q.id === serverQuote.id);
+            
+            if (!existingQuote) {
+                // New quote from server
+                quotes.push(serverQuote);
+                newQuotesAdded++;
+            } else if (existingQuote.text !== serverQuote.text || existingQuote.category !== serverQuote.category) {
+                // Conflict detected - server takes precedence
+                const conflictInfo = {
+                    id: serverQuote.id,
+                    local: existingQuote,
+                    server: serverQuote
+                };
+                conflicts.push(conflictInfo);
+                
+                // Update local quote with server data
+                const index = quotes.findIndex(q => q.id === serverQuote.id);
+                if (index !== -1) {
+                    quotes[index] = { ...serverQuote };
+                    quotesUpdated++;
+                }
+            }
+        });
+
+        // Save updated quotes to localStorage
+        if (newQuotesAdded > 0 || quotesUpdated > 0) {
+            saveQuotes();
+            updateCategoryFilter();
+            
+            // Show sync results
+            let message = `Sync complete: `;
+            if (newQuotesAdded > 0) message += `${newQuotesAdded} new quotes added`;
+            if (quotesUpdated > 0) {
+                if (newQuotesAdded > 0) message += ', ';
+                message += `${quotesUpdated} quotes updated`;
+            }
+            
+            showNotification(message, 'success');
+            
+            // Handle conflicts
+            if (conflicts.length > 0) {
+                handleConflicts(conflicts);
+            }
+        } else {
+            showNotification('Data is up to date', 'info');
+        }
+
+        // Update last sync timestamp
+        localStorage.setItem(SERVER_CONFIG.lastSyncKey, Date.now().toString());
+        
+    } catch (error) {
+        console.error('Sync failed:', error);
+        showNotification('Sync failed. Will retry automatically.', 'error');
+    }
+}
+
+// Handle conflicts with user notification
+function handleConflicts(conflicts) {
+    const conflictMessage = `${conflicts.length} conflict(s) resolved. Server data took precedence.`;
+    showNotification(conflictMessage, 'warning', 5000);
+    
+    // Log conflicts for debugging
+    console.log('Conflicts resolved:', conflicts);
+    
+    // Show conflict details if user wants to see them
+    setTimeout(() => {
+        if (confirm('Would you like to see details about the resolved conflicts?')) {
+            showConflictDetails(conflicts);
+        }
+    }, 1000);
+}
+
+// Show conflict details in a modal-like interface
+function showConflictDetails(conflicts) {
+    const existingModal = document.getElementById('conflictModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+
+    const modal = document.createElement('div');
+    modal.id = 'conflictModal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>Conflict Resolution Details</h3>
+            <p>The following conflicts were automatically resolved (server data was used):</p>
+            <div class="conflict-list">
+                ${conflicts.map(conflict => `
+                    <div class="conflict-item">
+                        <h4>Quote ID: ${conflict.id}</h4>
+                        <div class="conflict-comparison">
+                            <div class="local-version">
+                                <strong>Your Version:</strong>
+                                <p>"${conflict.local.text}"</p>
+                                <small>Category: ${conflict.local.category}</small>
+                            </div>
+                            <div class="server-version">
+                                <strong>Server Version (Applied):</strong>
+                                <p>"${conflict.server.text}"</p>
+                                <small>Category: ${conflict.server.category}</small>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <button onclick="closeConflictModal()">Close</button>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+
+// Close conflict modal
+function closeConflictModal() {
+    const modal = document.getElementById('conflictModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Show notification system
+function showNotification(message, type = 'info', duration = 3000) {
+    const existingNotification = document.getElementById('notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    const notification = document.createElement('div');
+    notification.id = 'notification';
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="closeNotification()" class="close-btn">&times;</button>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Auto-hide notification
+    setTimeout(() => {
+        closeNotification();
+    }, duration);
+}
+
+// Close notification
+function closeNotification() {
+    const notification = document.getElementById('notification');
+    if (notification) {
+        notification.remove();
+    }
+}
+
+// Start periodic sync
+function startPeriodicSync() {
+    // Initial sync
+    setTimeout(() => {
+        syncWithServer();
+    }, 2000); // Wait 2 seconds after page load
+
+    // Set up periodic sync
+    syncInterval = setInterval(() => {
+        syncWithServer();
+    }, SERVER_CONFIG.syncInterval);
+}
+
+// Stop periodic sync
+function stopPeriodicSync() {
+    if (syncInterval) {
+        clearInterval(syncInterval);
+        syncInterval = null;
+    }
+}
+
+// Handle online/offline status
+function handleOnlineStatus() {
+    isOnline = navigator.onLine;
+    
+    if (isOnline) {
+        showNotification('Back online - resuming sync', 'success');
+        startPeriodicSync();
+    } else {
+        showNotification('Gone offline - sync paused', 'warning');
+        stopPeriodicSync();
+    }
+}
+
+// Manual sync function
+function manualSync() {
+    showNotification('Manual sync initiated...', 'info');
+    syncWithServer();
+}
+
+// Get last sync time
+function getLastSyncTime() {
+    const timestamp = localStorage.getItem(SERVER_CONFIG.lastSyncKey);
+    return timestamp ? new Date(parseInt(timestamp)) : null;
+}
+
+// Show sync status
+function showSyncStatus() {
+    const lastSync = getLastSyncTime();
+    const status = lastSync ? 
+        `Last sync: ${lastSync.toLocaleString()}` : 
+        'Never synced';
+    
+    const onlineStatus = isOnline ? 'Online' : 'Offline';
+    showNotification(`${onlineStatus} | ${status}`, 'info', 5000);
+}
+
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Load quotes from localStorage first
@@ -255,6 +526,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (newQuoteButton) {
         newQuoteButton.addEventListener('click', showRandomQuote);
     }
+    
+    // Set up online/offline event listeners
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    
+    // Start periodic sync
+    startPeriodicSync();
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    stopPeriodicSync();
 });
 
 // Additional utility function to clear all stored data
