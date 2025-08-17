@@ -93,14 +93,24 @@ function addQuote() {
         return;
     }
     
-    // Add new quote to array
-    quotes.push({
+    // Create new quote object
+    const newQuote = {
         text: quoteText,
-        category: quoteCategory
-    });
+        category: quoteCategory,
+        source: 'local',
+        timestamp: Date.now()
+    };
+    
+    // Add new quote to array
+    quotes.push(newQuote);
     
     // Save to localStorage
     saveQuotes();
+    
+    // Post to server if online
+    if (isOnline) {
+        postQuoteToServer(newQuote);
+    }
     
     // Show success message
     const successMessage = document.createElement('div');
@@ -279,6 +289,35 @@ async function fetchQuotesFromServer() {
         console.error('Failed to fetch server quotes:', error);
         showNotification('Failed to sync with server. Working offline.', 'error');
         return [];
+    }
+}
+
+// Post new quote to server (simulated)
+async function postQuoteToServer(quote) {
+    try {
+        const response = await fetch(SERVER_CONFIG.baseUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: quote.text,
+                body: `Category: ${quote.category}`,
+                userId: 1
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        showNotification('Quote synced to server successfully', 'success');
+        return result;
+    } catch (error) {
+        console.error('Failed to post quote to server:', error);
+        showNotification('Failed to sync quote to server. Saved locally.', 'warning');
+        return null;
     }
 }
 
