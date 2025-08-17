@@ -130,21 +130,12 @@ function cancelAddQuote() {
 // Function to create category filter
 function createCategoryFilter() {
     const existingFilter = document.getElementById('categoryFilter');
-    if (existingFilter) return;
+    if (existingFilter) {
+        populateCategories();
+        return;
+    }
     
-    const filterContainer = document.createElement('div');
-    filterContainer.id = 'categoryFilter';
-    filterContainer.innerHTML = `
-        <label for="categorySelect">Filter by Category:</label>
-        <select id="categorySelect" onchange="filterQuotesByCategory()">
-            <option value="all">All Categories</option>
-        </select>
-    `;
-    
-    // Insert filter before quote display
-    const quoteDisplay = document.getElementById('quoteDisplay');
-    quoteDisplay.parentNode.insertBefore(filterContainer, quoteDisplay);
-    
+    // Category filter is now in HTML, just populate it
     populateCategories();
 }
 
@@ -264,21 +255,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (newQuoteButton) {
         newQuoteButton.addEventListener('click', showRandomQuote);
     }
-    
-    // Create additional control buttons
-    const controlsContainer = document.createElement('div');
-    controlsContainer.id = 'controls';
-    controlsContainer.innerHTML = `
-        <button onclick="createAddQuoteForm()">Add New Quote</button>
-        <button onclick="exportQuotes()">Export Quotes</button>
-        <input type="file" id="importFile" accept=".json" onchange="importQuotes(event)" style="display: none;">
-        <button onclick="document.getElementById('importFile').click()">Import Quotes</button>
-        <button onclick="clearAllData()">Clear All Data</button>
-    `;
-    
-    // Insert controls after the new quote button
-    const newQuoteBtn = document.getElementById('newQuote');
-    newQuoteBtn.parentNode.insertBefore(controlsContainer, newQuoteBtn.nextSibling);
 });
 
 // Additional utility function to clear all stored data
@@ -305,101 +281,3 @@ function clearAllData() {
         alert('All data cleared and reset to defaults!');
     }
 }
-
-// Add some basic styling through JavaScript (optional - better to use CSS file)
-function addBasicStyling() {
-    const style = document.createElement('style');
-    style.textContent = `
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        
-        .quote-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin: 20px 0;
-        }
-        
-        blockquote {
-            font-size: 1.2em;
-            font-style: italic;
-            margin: 0;
-            color: #333;
-        }
-        
-        .category {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 10px;
-        }
-        
-        #addQuoteForm {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin: 20px 0;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        
-        input, textarea, select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        
-        textarea {
-            height: 80px;
-            resize: vertical;
-        }
-        
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        
-        button:hover {
-            background-color: #0056b3;
-        }
-        
-        .success-message {
-            color: green;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        
-        #categoryFilter {
-            margin: 20px 0;
-        }
-        
-        #controls {
-            margin: 20px 0;
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Apply basic styling when DOM loads
-document.addEventListener('DOMContentLoaded', addBasicStyling);
