@@ -262,7 +262,7 @@ function transformPostToQuote(post) {
 }
 
 // Fetch quotes from server (simulated)
-async function fetchServerQuotes() {
+async function fetchQuotesFromServer() {
     try {
         showNotification('Syncing with server...', 'info');
         const response = await fetch(`${SERVER_CONFIG.baseUrl}?_limit=10`);
@@ -290,7 +290,7 @@ async function syncWithServer() {
     }
 
     try {
-        const serverQuotes = await fetchServerQuotes();
+        const serverQuotes = await fetchQuotesFromServer();
         
         if (serverQuotes.length === 0) {
             return;
